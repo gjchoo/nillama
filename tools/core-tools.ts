@@ -4,6 +4,8 @@ import * as path from "path";
 import type { DirectoryItem } from "../types/types.js";
 import { defineChatSessionFunction } from "node-llama-cpp";
 
+import { fileURLToPath } from "url";
+
 // ============================================================================
 // TOOL 1: READ_FILE
 // ============================================================================
@@ -25,13 +27,17 @@ export const readFileTool = defineChatSessionFunction({
   },
 
   async handler(params: { path: string; context: any }) {
+    console.log("Core Tool: readFileTool");
     console.log(params);
-    try {
-      const cwd = process.cwd();
-      // Security: Resolve to absolute path and check if allowed
-      const absolutePath = path.resolve(cwd, params.path);
 
-      if (!isPathAllowed(absolutePath, [cwd])) {
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = path.dirname(__filename);
+
+    try {
+      // Security: Resolve to absolute path and check if allowed
+      const absolutePath = path.resolve(__dirname, params.path);
+
+      if (!isPathAllowed(absolutePath, [__dirname])) {
         return {
           success: false,
           error: `Access denied: ${params.path} is outside allowed directories`,
@@ -95,7 +101,6 @@ export const readFileTool = defineChatSessionFunction({
 // ============================================================================
 // TOOL 2: LIST_DIRECTORY
 // ============================================================================
-
 export const listDirectoryTool = defineChatSessionFunction({
   description: "List files and directories in a given path",
   params: {
@@ -131,11 +136,14 @@ export const listDirectoryTool = defineChatSessionFunction({
     showHidden?: boolean;
   }) {
     try {
-      const cwd = process.cwd();
+      console.log("Core Tool: listDirectoryTool");
+      console.log(params);
 
-      const targetPath = path.resolve(cwd, params.path || ".");
+      const __filename = fileURLToPath(import.meta.url);
+      const __dirname = path.dirname(__filename);
+      const targetPath = path.resolve(__dirname, params.path || ".");
 
-      if (!isPathAllowed(targetPath, [cwd])) {
+      if (!isPathAllowed(targetPath, [__dirname])) {
         return {
           success: false,
           error: `Access denied: ${params.path} is outside allowed directories`,

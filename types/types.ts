@@ -28,3 +28,9 @@ export interface DirectoryItem {
   size?: number;
   modified?: Date;
 }
+
+export interface LLMResponseType {
+  thought: string | null;
+  action: string | null;
+  answer: string | null;
+}

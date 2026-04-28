@@ -14,10 +14,11 @@ import {
   readFileTool,
   getToolDefinitions,
 } from "./tools/core-tools";
+import type { LLMResponseType } from "./types/types";
 
 // Configuration for the Llama model in Mistral mode.
 const MODEL_CONFIG = {
-  modelPath: "./models/Gemma-4-E4B-Uncensored-HauhauCS-Aggressive-Q4_K_P.gguf", // Replace with your model path.
+  modelPath: "./models/Ministral-3-14B-Reasoning-2512-Q5_K_M.gguf", // Replace with your model path.
 };
 
 // Read local file
@@ -190,13 +191,7 @@ async function generateText(prompt: string) {
   }
 }
 
-const parseResponse = (
-  response: string,
-): {
-  thought: string | null;
-  action: string | null;
-  answer: string | null;
-} => {
+const parseResponse = (response: string): LLMResponseType => {
   const thoughtMatch = response.match(
     /Thought:\s*(.+?)(?=\n(?:Action|Answer):|$)/s,
   );
@@ -250,8 +245,8 @@ async function run(userQuery: string, maxIterations: number = 15) {
 
     if (action) {
       console.log("\n[ACTION]:", action);
-      //const observation = await this.toolExecutor.executeAction(action);
-      //console.log("\n[OBSERVATION]:", observation);
+      // const observation = await this.toolExecutor.executeAction(action);
+      // console.log("\n[OBSERVATION]:", observation);
 
       conversationHistory.push(`Observation: ${action}`);
     } else if (!thought) {
@@ -265,7 +260,7 @@ async function run(userQuery: string, maxIterations: number = 15) {
 
 // Function to start the interactive prompt session.
 function startPromptSession() {
-  console.log("=== Node-Llama-CPP Mistral Prompt Session ===");
+  console.log("=== TS llama-CPP nillama Prompt Session ===");
   console.log("Type your prompt and press Enter. Type 'exit' to quit.");
 
   rl.on("line", async (line) => {
