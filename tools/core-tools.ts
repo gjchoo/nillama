@@ -256,7 +256,7 @@ export const writeFileTool = ({
             },
             path: {
                 type: "string",
-                description: "Absolute file path (no ../ traversal allowed)"
+                description: "Absolute file path"
             },
             content: {
                 type: "string",
@@ -276,10 +276,11 @@ export const writeFileTool = ({
         encoding: string
     }) {
         const {operation, path: targetPath, content, encoding = "utf-8"} = params;
- 
+        const permissionConfig = {allowlist: []};
         try {
             // 1. Validate path
             const normalized = path.normalize(targetPath);
+            console.log("Normalised path: " + normalized);
             if (!path.isAbsolute(normalized) || normalized.includes("..")) {
                 return {
                     status: "error",
@@ -320,7 +321,7 @@ export const writeFileTool = ({
  
             // 4. Execute operation
             if (operation === "read") {
-                const data = fs.readFileSync(normalized, encoding);
+                const data = await fs.readFile(normalized, encoding);
                 return {
                     status: "success",
                     data,
@@ -330,8 +331,8 @@ export const writeFileTool = ({
  
             if (operation === "write") {
                 const dir = path.dirname(normalized);
-                fs.mkdirSync(dir, {recursive: true});
-                fs.writeFileSync(normalized, content || "", encoding);
+                await fs.mkdir(dir, {recursive: true});
+                await fs.writeFile(normalized, content || "", encoding);
                 return {
                     status: "success",
                     path: normalized
@@ -339,7 +340,7 @@ export const writeFileTool = ({
             }
  
             if (operation === "append") {
-                fs.appendFileSync(normalized, content || "", encoding);
+                await fs.appendFile(normalized, content || "", encoding);
                 return {
                     status: "success",
                     path: normalized
