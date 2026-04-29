@@ -1,0 +1,11 @@
+{
+  "agent_id": "agent_name",
+  "permissions": [
+    {
+      "path": "",
+      "type": "",
+      "allow_parent_access": false,
+      "allow_traversal": false
+    }
+  ]
+}
