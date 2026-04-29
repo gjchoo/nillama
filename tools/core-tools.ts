@@ -319,3 +319,12 @@ export const getToolDefinitions = (): string => {
     })
     .join("\n\n");
 };
+
+export const getAWSToolDefinitions = (input: any): string => {
+  return Array.from(input.values())
+    .map((tool) => {
+      return `${tool.description}: ${tool.description} 
+        Parameters: ${JSON.stringify(tool.execution, null, 2)}`;
+    })
+    .join("\n\n");
+};

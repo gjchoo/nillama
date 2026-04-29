@@ -5,6 +5,7 @@ import {
   defineChatSessionFunction,
   getLlama,
   LlamaChatSession,
+  LlamaContext,
 } from "node-llama-cpp";
 import * as readline from "readline";
 import * as fs from "fs/promises";
@@ -13,12 +14,37 @@ import {
   listDirectoryTool,
   readFileTool,
   getToolDefinitions,
+  getAWSToolDefinitions,
 } from "./tools/core-tools";
 import type { LLMResponseType } from "./types/types";
 
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
+
+let client: Client | undefined = undefined;
+const baseUrl = new URL("https://knowledge-mcp.global.api.aws");
+client = new Client({
+  name: "streamable-http-client",
+  version: "1.0.0",
+});
+try {
+  const transport = new StreamableHTTPClientTransport(new URL(baseUrl));
+  await client.connect(transport);
+  console.log("Connected using Streamable HTTP transport");
+} catch (error) {
+  // If that fails, fall back to SSE
+  console.log(
+    "Streamable HTTP connection failed, falling back to SSE transport",
+  );
+}
+
+// Now your agent can list and call tools from the remote server
+const toolList = await client.listTools();
+
 // Configuration for the Llama model in Mistral mode.
 const MODEL_CONFIG = {
-  modelPath: "./models/Ministral-3-14B-Reasoning-2512-Q5_K_M.gguf", // Replace with your model path.
+  modelPath: "./models/Qwen3.5-9B.Q5_K_M.gguf", // Replace with your model path.
 };
 
 // Read local file
@@ -28,6 +54,9 @@ const readFile = (path: string) => {
 
 const buildSystemPrompt = (): string => {
   const toolDefs = getToolDefinitions();
+  const awsTools = new Map(toolList.tools.map((tool) => [tool.name, tool]));
+  const awsToolDefinition = getAWSToolDefinitions(awsTools);
+  console.log(awsToolDefinition);
 
   return `You are an autonomous coding agent. You think step-by-step and use tools to accomplish tasks.
 
@@ -43,6 +72,9 @@ const buildSystemPrompt = (): string => {
 
         AVAILABLE TOOLS:
         ${toolDefs}
+
+        AVAILABLE AWS TOOLS:
+        ${awsToolDefinition}
 
         ACTION FORMAT:
         Action: {"tool_name": {"param1": "value1", "param2": "value2"}}
@@ -69,7 +101,8 @@ const buildSystemPrompt = (): string => {
 
 // Initialize the Llama model.
 let session: LlamaChatSession;
-let conversationHistory = [buildSystemPrompt()];
+let context: LlamaContext;
+let conversationHistory = [];
 
 // Create a readline interface for interactive input.
 const rl = readline.createInterface({
@@ -143,7 +176,7 @@ const rl = readline.createInterface({
 //   }),
 // };
 
-const functions = { readFileTool, listDirectoryTool };
+//const functions = { readFileTool, listDirectoryTool };
 
 // Function to load the model.
 async function loadModel() {
@@ -155,9 +188,9 @@ async function loadModel() {
     });
     const model = await llama.loadModel(MODEL_CONFIG);
 
-    const context = await model.createContext();
+    context = await model.createContext();
     session = new LlamaChatSession({
-      systemPrompt: await readFile("./system/system_instruction.md"),
+      systemPrompt: buildSystemPrompt(),
       contextSequence: context.getSequence(),
     });
 
@@ -178,7 +211,7 @@ async function generateText(prompt: string) {
   try {
     console.log("\nGenerating response...");
     const response = await session.prompt(prompt, {
-      functions,
+      // functions,
       temperature: 0.1,
       onTextChunk(chunk: string) {
         process.stdout.write(chunk);
@@ -224,16 +257,15 @@ async function run(userQuery: string, maxIterations: number = 15) {
     // Get model response
     const fullPrompt = conversationHistory.join("\n\n");
     const response = await session.prompt(fullPrompt, {
-      functions,
+      // functions,
       temperature: 0.1,
+      maxTokens: context.contextSize,
       onTextChunk(chunk: string) {
         process.stdout.write(chunk);
       },
     });
 
     conversationHistory.push(`Assistant: ${response}`);
-
-    console.log("\n[MODEL OUTPUT]:\n", response);
 
     // Parse response
     const { thought, action, answer } = parseResponse(response);
